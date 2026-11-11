@@ -1,0 +1,10 @@
+{
+  "name": "Lantern Lane",
+  "short_name": "Lantern Lane",
+  "description": "A cozy pixel room where you sit down and focus alongside other people.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#2b2233",
+  "theme_color": "#2b2233",
+  "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
