@@ -24,7 +24,13 @@ your own room.
 There is no game server. The whole game is a static page:
 
 - **Your progress** (coins, outfit, furniture, streak, session history) is saved in your browser's
-  storage. It stays on that browser and device; clearing site data resets it.
+  storage. As a guest it stays on that browser and device; clearing site data resets it.
+- **Accounts** (Settings, then Account) carry progress across devices. Your progress is encrypted in
+  the browser (AES-GCM) with a key derived from your password (PBKDF2-SHA256, 310,000 rounds,
+  random salt), and only the encrypted copy is kept on the relay. The password is never sent or
+  stored, so it cannot be recovered if forgotten. Sign in on another device with the same username
+  and password to load it there. If two devices change things at the same moment, the later save
+  wins.
 - **Other players** reach you through a free public message relay, the HiveMQ MQTT broker
   (`wss://broker.hivemq.com:8884/mqtt`), using [MQTT.js](https://github.com/mqttjs/MQTT.js). Each
   browser publishes its own avatar's state for the room it is in and listens for everyone else's.
@@ -36,7 +42,10 @@ Because the relay is public and each browser keeps its own score, this is not se
 determined cheater: someone technical could edit their own coins, or publish fake avatars. What is
 protected is everyone else: anything arriving from the relay is checked against a schema and the
 room's rules before it is shown, a flooding sender is rate-limited, and nothing another player
-sends can change your coins, seat, or saved data. If the relay is down or slow, the timer and your
+sends can change your coins, seat, or saved data. Account copies on the relay cannot be read or
+forged without the password, but they can be overwritten or dropped; every signed-in device keeps
+its own copy and puts it back when that happens. Anyone who knows a username can fetch its
+encrypted copy and try passwords against it offline, so use a long one. If the relay is down or slow, the timer and your
 own room still work; you just will not see other people until it comes back.
 
 All art is drawn in code from one palette (`shared/src/palette.ts`); there are no image or audio
@@ -77,7 +86,7 @@ In the browser console, `window.__hour = 22` previews the night-time look (any h
 
 ```
 shared/src        Rules: room layouts, pathfinding, rewards, catalog, name checks, message types
-client/src/host   The game logic that runs in each browser, and the peer-to-peer wire format
+client/src/host   The game logic that runs in each browser, the peer-to-peer wire format, account sync
 client/src/net    The relay connection and the glue to the interface
 client/src        Canvas game (engine/, world/, art/), Preact panels (ui/), sound (audio/)
 tests/            Vitest suites; several simulated browsers talk through an in-memory relay

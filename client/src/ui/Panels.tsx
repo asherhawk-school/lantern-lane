@@ -4,7 +4,7 @@ import { MAX_FURNITURE_EACH } from '../../../shared/src/constants.ts';
 import { SKIN } from '../../../shared/src/palette.ts';
 import { applySound, play, unlock } from '../audio/sound.ts';
 import { joinRoom, send } from '../net/client.ts';
-import { meView, roomInfo, self, settings, showToast, stats, updateSettings } from '../state.ts';
+import { account, meView, panel, roomInfo, self, settings, showToast, stats, syncStatus, updateSettings } from '../state.ts';
 import { avatarUrl, coinUrl, itemUrl } from './icons.ts';
 import { Modal } from './Modal.tsx';
 
@@ -291,6 +291,18 @@ export function SettingsPanel() {
 
   return (
     <Modal title="Settings">
+      <div class="field">
+        <label>Account</label>
+        <div class="row">
+          <span class="grow">
+            {account.value ? `Signed in as ${account.value}${syncStatus.value === 'saving' ? ' (saving...)' : ''}` : 'Guest. Progress is saved on this device only.'}
+          </span>
+          <button class="btn alt" type="button" onClick={() => (panel.value = 'account')}>
+            {account.value ? 'Manage' : 'Create or sign in'}
+          </button>
+        </div>
+      </div>
+
       <form
         class="field"
         onSubmit={(e) => {

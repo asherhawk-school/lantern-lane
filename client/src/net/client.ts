@@ -2,7 +2,8 @@ import { PAL } from '../../../shared/src/palette.ts';
 import type { ClientMsg, JoinTarget, ServerMsg } from '../../../shared/src/protocol.ts';
 import { play } from '../audio/sound.ts';
 import { Host, type Store } from '../host/host.ts';
-import { connState, decorate, kickReason, needName, net, panel, result, roomInfo, self, settings, showToast, stats } from '../state.ts';
+import { AccountSync, type KV } from '../host/sync.ts';
+import { account, connState, decorate, kickReason, needName, net, panel, result, roomInfo, self, settings, showToast, stats, syncStatus } from '../state.ts';
 import { addPlayer, applyMoved, applyPatch, celebrate, loadRoom, refreshPeople, removePlayer, setFurniture, showEmote, world } from '../world/world.ts';
 import { createRelay, type LiveRelay } from './relay.ts';
 
@@ -33,11 +34,46 @@ const store: Store = {
     } catch {
       // Storage is unavailable (private window): progress lasts for this visit only.
     }
+    sync?.localChanged();
   },
 };
 
+/** Small values the account sync keeps on this device (which account, its key, the save's revision). */
+const kv: KV = {
+  get(key) {
+    try {
+      return localStorage.getItem(`lanternlane.acct.${key}${suffix}`);
+    } catch {
+      return null;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(`lanternlane.acct.${key}${suffix}`, value);
+    } catch {
+      // Without storage the sign-in lasts for this visit only.
+    }
+  },
+  remove(key) {
+    try {
+      localStorage.removeItem(`lanternlane.acct.${key}${suffix}`);
+    } catch {
+      // nothing to remove
+    }
+  },
+};
+
+function sessionRunning(): boolean {
+  try {
+    return !!JSON.parse(store.get() ?? 'null')?.active;
+  } catch {
+    return false;
+  }
+}
+
 let host: Host | null = null;
 let relay: LiveRelay | null = null;
+let sync: AccountSync | null = null;
 let lastTarget: JoinTarget = { type: 'public', kind: 'cafe' };
 
 // Only one tab per saved player: a newer tab takes over and the older one steps aside.
@@ -54,8 +90,38 @@ channel?.addEventListener('message', (ev) => {
 function shutdown(): void {
   host?.stop();
   host = null;
+  sync?.stop();
+  sync = null;
   relay?.end();
   relay = null;
+}
+
+/** Start the game logic afresh from whatever is saved on this device. */
+function startHost(): void {
+  host?.stop();
+  if (!relay) return;
+  host = new Host({ store, relay, deliver: onMessage, timeScale: speed, bots: params.get('bots') !== '0' });
+  host.start();
+  send({ t: 'hello' });
+}
+
+export async function signUp(username: string, password: string): Promise<string | null> {
+  if (!sync) return 'Not ready yet';
+  const error = await sync.signUp(username, password);
+  account.value = sync.user();
+  return error;
+}
+
+export async function signIn(username: string, password: string): Promise<string | null> {
+  if (!sync) return 'Not ready yet';
+  const error = await sync.signIn(username, password);
+  account.value = sync.user();
+  return error;
+}
+
+export async function signOut(): Promise<void> {
+  await sync?.signOut();
+  account.value = null;
 }
 
 export function send(msg: ClientMsg): void {
@@ -156,17 +222,50 @@ export function connect(): void {
   connState.value = 'connecting';
   channel?.postMessage({ t: 'here', tab: tabId });
 
-  relay = createRelay({
-    onMessage: (topic, payload) => host?.relayMessage(topic, payload),
+  const live = createRelay({
+    onMessage: (topic, payload) => {
+      if (!sync?.message(topic, payload)) host?.relayMessage(topic, payload);
+    },
     onStatus: (online) => {
       if (connState.value === 'kicked') return;
       connState.value = online ? 'online' : 'offline';
-      if (online) host?.relayOnline();
+      if (online) {
+        sync?.online();
+        host?.relayOnline();
+      } else {
+        sync?.offline();
+      }
     },
   });
-  host = new Host({ store, relay, deliver: onMessage, timeScale: speed, bots: params.get('bots') !== '0' });
-  host.start();
-  send({ t: 'hello' });
+  relay = live;
+  sync = new AccountSync(kv, live, {
+    current: () => store.get(),
+    busy: sessionRunning,
+    status: (s) => (syncStatus.value = s),
+    adopt: (save) => {
+      try {
+        localStorage.setItem(SAVE_KEY, save);
+      } catch {
+        // No storage: the adopted progress cannot be kept.
+      }
+      result.value = null;
+      startHost();
+      showToast('Progress loaded from your account');
+    },
+    cleared: () => {
+      try {
+        localStorage.removeItem(SAVE_KEY);
+      } catch {
+        // nothing to remove
+      }
+      self.value = null;
+      result.value = null;
+      panel.value = null;
+      startHost();
+    },
+  });
+  account.value = sync.user();
+  startHost();
 }
 
 /** After another tab took over, bring the game back to this one. */

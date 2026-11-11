@@ -2,10 +2,27 @@ import { useState } from 'preact/hooks';
 import { unlock } from '../audio/sound.ts';
 import { submitName } from '../net/client.ts';
 import { needName } from '../state.ts';
+import { AccountForm } from './Account.tsx';
 
 export function Welcome() {
   const [name, setName] = useState('');
   const reason = needName.value?.reason;
+  const [signingIn, setSigningIn] = useState(false);
+
+  if (signingIn) {
+    return (
+      <div class="modal-back solid">
+        <div class="box modal welcome">
+          <h1>Lantern Lane</h1>
+          <p>Sign in to load your coins, outfits, room and streak onto this device.</p>
+          <AccountForm mode="in" />
+          <button class="link" type="button" onClick={() => setSigningIn(false)}>
+            Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div class="modal-back solid">
@@ -33,7 +50,12 @@ export function Welcome() {
         <button class="btn" type="submit" disabled={name.trim().length < 2}>
           Come in
         </button>
-        <p class="note">No sign-up. Your progress is saved in this browser.</p>
+        <p class="note">
+          No sign-up needed. Already have an account?{' '}
+          <button class="link" type="button" onClick={() => setSigningIn(true)}>
+            Sign in
+          </button>
+        </p>
       </form>
     </div>
   );

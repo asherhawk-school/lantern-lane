@@ -3,6 +3,7 @@ import { unlock } from '../audio/sound.ts';
 import { startGame } from '../engine/game.ts';
 import { connect, reconnectNow } from '../net/client.ts';
 import { connState, decorate, kickReason, needName, panel, people, roomInfo, self, showToast, toast, type Panel } from '../state.ts';
+import { AccountPanel } from './Account.tsx';
 import { coinUrl, flameUrl } from './icons.ts';
 import { RoomPicker, SettingsPanel, Shop, StatsPanel, Wardrobe } from './Panels.tsx';
 import { DecorateBar, EmoteBar, People } from './Side.tsx';
@@ -134,6 +135,7 @@ export function App() {
       {p === 'wardrobe' && <Wardrobe />}
       {p === 'stats' && <StatsPanel />}
       {p === 'settings' && <SettingsPanel />}
+      {p === 'account' && <AccountPanel />}
       {needName.value && <Welcome />}
       <Status />
       {note && (

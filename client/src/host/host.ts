@@ -81,7 +81,7 @@ const CODE_KIND: Record<string, RoomKind> = { C: 'cafe', L: 'library', H: 'home'
 const PEER_TIMEOUT_MS = 13_000;
 const HEARTBEAT_TICKS = 4;
 const MAX_PEERS = 24;
-const MAX_SESSIONS_KEPT = 1000;
+const MAX_SESSIONS_KEPT = 400;
 const EMOTE_GAP_MS = 700;
 
 const err = (code: string, msg: string): ServerMsg => ({ t: 'error', code, msg });

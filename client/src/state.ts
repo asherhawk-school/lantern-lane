@@ -4,7 +4,7 @@ import type { FocusResult, FocusState, RoomSnapshot, SelfState, Stats } from '..
 
 /** UI state shared between the canvas game and the Preact panels. */
 
-export type Panel = null | 'rooms' | 'shop' | 'wardrobe' | 'stats' | 'settings';
+export type Panel = null | 'rooms' | 'shop' | 'wardrobe' | 'stats' | 'settings' | 'account';
 
 export interface PersonRow {
   id: string;
@@ -48,6 +48,9 @@ export const connState = signal<'connecting' | 'online' | 'offline' | 'kicked'>(
 export const kickReason = signal('');
 export const needName = signal<{ reason: string | null } | null>(null);
 export const self = signal<SelfState | null>(null);
+/** Username of the signed-in account, or null when playing as a guest on this device. */
+export const account = signal<string | null>(null);
+export const syncStatus = signal<'off' | 'saving' | 'synced' | 'offline'>('off');
 export const roomInfo = signal<RoomInfo | null>(null);
 export const people = signal<PersonRow[]>([]);
 export const panel = signal<Panel>(null);
