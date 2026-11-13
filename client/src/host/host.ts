@@ -245,6 +245,8 @@ export class Host {
 
   // ---- talking to other browsers ----
 
+  private layoutHealedAt = 0;
+
   private topic(key: string, leaf: string): string {
     return `${ROOT}/${key}/${leaf}`;
   }
@@ -303,7 +305,15 @@ export class Host {
     const now = Date.now();
 
     if (sender === 'layout') {
-      if (room.access !== 'home' || room.ownerId === p.id) return;
+      if (room.access !== 'home') return;
+      if (room.ownerId === p.id) {
+        // Anyone can overwrite the saved layout of our room; put ours back, but not in a loop with a flooder.
+        if (payload !== JSON.stringify({ items: p.homeLayout }) && now - this.layoutHealedAt > 5000) {
+          this.layoutHealedAt = now;
+          this.publishLayout();
+        }
+        return;
+      }
       const parsed = LayoutSchema.safeParse(data);
       if (!parsed.success) return;
       // Re-check every piece against the room rules rather than trusting the list.

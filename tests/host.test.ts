@@ -199,8 +199,9 @@ describe('seeing each other', () => {
     b.send(CAFE);
     a.send({ t: 'rename', name: 'Ada L' });
     expect(b.last('upd')).toMatchObject({ id: a.id, patch: { name: 'Ada L' } });
-    a.send({ t: 'outfit', outfit: { ...a.last('self')!.self.outfit, skin: 3 } });
-    expect(b.last('upd')).toMatchObject({ id: a.id, patch: { outfit: { skin: 3 } } });
+    const skin = (a.last('self')!.self.outfit.skin + 1) % 4; // always a change, whatever the random starting skin
+    a.send({ t: 'outfit', outfit: { ...a.last('self')!.self.outfit, skin } });
+    expect(b.last('upd')).toMatchObject({ id: a.id, patch: { outfit: { skin } } });
   });
 
   it('removes a player who leaves, and one who silently disappears', () => {
@@ -573,6 +574,18 @@ describe('untrusted messages from the relay', () => {
 
     for (let i = 0; i < 60; i++) hub.publish(topic(i.toString(16).padStart(12, '0')), state({ n: `P${i}` }));
     expect(a.all('join').length).toBeLessThanOrEqual(24);
+  });
+
+  it('puts the owner\'s furniture back when someone overwrites their room\'s layout', () => {
+    const a = player('Ada');
+    a.send({ t: 'join', target: { type: 'home' } });
+    const id = a.host.room!.id;
+    const mine = JSON.stringify({ items: a.host.room!.furniture });
+    vi.advanceTimersByTime(6000);
+    hub.publish(`${ROOT}/${id}/layout`, JSON.stringify({ items: [{ id: 1, item: 'f_plant', x: 2, y: 5 }] }), true);
+    const last = hub.log.filter((l) => l.topic === `${ROOT}/${id}/layout`).at(-1);
+    expect(last?.payload).toBe(mine);
+    expect(a.last('furniture')).toBeUndefined();
   });
 
   it('rejects furniture layouts that break the room rules', () => {
